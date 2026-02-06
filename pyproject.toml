@@ -5,6 +5,7 @@ description = "CLI tools for Plex metadata management"
 requires-python = ">=3.12"
 dependencies = [
   "plexapi>=4.16.0",
+  "tqdm>=4.67.0",
   "typer>=0.12.0",
   "pydantic>=2.8.0",
 ]

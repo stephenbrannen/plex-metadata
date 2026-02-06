@@ -3,7 +3,7 @@ from plexapi.server import PlexServer
 from requests import RequestException
 
 from posters.domain import PosterJob
-from posters.repositories.plex_posters import PlexPostersRepository
+from posters.repositories.plex_posters import DownloadReport, PlexPostersRepository
 from posters.schemas import PostersDownloadRequest
 
 app = typer.Typer(help="Download poster artwork")
@@ -43,11 +43,23 @@ def download(
             if len(targets) > 5:
                 typer.echo("  - ...")
             return
-        count = repository.download_posters(job=job, limit=request.limit)
+        report = repository.download_posters(job=job, limit=request.limit)
     except RequestException as exc:
         typer.secho(f"Request failed: {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
     except RuntimeError as exc:
         typer.secho(f"Configuration error: {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
-    typer.echo(f"Downloaded {count} posters to {request.output_dir}")
+    _print_report(report, request.output_dir)
+
+
+def _print_report(report: DownloadReport, output_dir: str) -> None:
+    typer.echo(f"Downloaded {report.downloaded} posters to {output_dir}")
+    if report.skipped_404 == 0:
+        return
+    typer.secho(f"Skipped {report.skipped_404} posters (404)", fg=typer.colors.YELLOW)
+    typer.echo("Missing posters:")
+    typer.echo("Title | URL")
+    typer.echo("--- | ---")
+    for asset in report.missing:
+        typer.echo(f"{asset.title} | {asset.url}")

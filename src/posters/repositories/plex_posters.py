@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
 from plexapi.server import PlexServer
+from requests import HTTPError
+from tqdm import tqdm
 
 from posters.domain import PosterJob
 
@@ -16,6 +18,9 @@ class HttpResponse(Protocol):
     def raise_for_status(self) -> None: ...
 
     def iter_content(self, chunk_size: int) -> Iterable[bytes]: ...
+
+    @property
+    def headers(self) -> Mapping[str, str]: ...
 
 
 class HttpSession(Protocol):
@@ -27,7 +32,14 @@ class HttpSession(Protocol):
 class PosterAsset:
     title: str
     url: str
-    key: str | None = None
+    year: int | None = None
+
+
+@dataclass(frozen=True)
+class DownloadReport:
+    downloaded: int
+    skipped_404: int
+    missing: list[PosterAsset]
 
 
 @dataclass(frozen=True)
@@ -45,52 +57,82 @@ class PlexPostersRepository:
         section = self.plex.library.section(library)
         for item in section.all():
             if item.posterUrl:
-                key = str(getattr(item, "ratingKey", "")) or None
-                yield PosterAsset(title=item.title, url=item.posterUrl, key=key)
+                year = getattr(item, "year", None)
+                yield PosterAsset(title=item.title, url=item.posterUrl, year=year)
 
     def iter_targets(self, job: PosterJob, limit: int | None = None) -> Iterable[Path]:
         """Yield target file paths for poster assets."""
         output_dir = Path(job.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        for index, asset in enumerate(self.iter_posters(job.library)):
-            if limit is not None and index >= limit:
-                break
-            filename = self._safe_filename(asset.title, index, asset.key)
+        assets = self._collect_assets(job.library, limit)
+        for index, asset in enumerate(assets):
+            filename = self._safe_filename(asset.title, index, asset.year)
             yield output_dir / f"{filename}.jpg"
 
-    def download_posters(self, job: PosterJob, limit: int | None = None) -> int:
-        """Download posters to the job output directory. Returns count."""
+    def download_posters(self, job: PosterJob, limit: int | None = None) -> DownloadReport:
+        """Download posters to the job output directory. Returns report."""
         output_dir = Path(job.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         downloaded = 0
-        for index, asset in enumerate(self.iter_posters(job.library)):
-            if limit is not None and index >= limit:
-                break
-            filename = self._safe_filename(asset.title, index, asset.key)
-            target = output_dir / f"{filename}.jpg"
-            self._download(asset.url, target)
-            downloaded += 1
-        return downloaded
+        skipped_404 = 0
+        missing: list[PosterAsset] = []
+        assets = self._collect_assets(job.library, limit)
+        with tqdm(total=len(assets), desc="Posters", unit="poster") as poster_bar:
+            for index, asset in enumerate(assets):
+                filename = self._safe_filename(asset.title, index, asset.year)
+                target = output_dir / f"{filename}.jpg"
+                if self._download(asset.url, target, asset.title):
+                    downloaded += 1
+                else:
+                    skipped_404 += 1
+                    missing.append(asset)
+                poster_bar.update(1)
+        return DownloadReport(downloaded=downloaded, skipped_404=skipped_404, missing=missing)
 
-    def _download(self, url: str, target: Path) -> None:
+    def _download(self, url: str, target: Path, title: str) -> bool:
         session = self.session
         if session is None:
             raise RuntimeError("HTTP session is not configured.")
         response = session.get(url, stream=True, timeout=30)
-        response.raise_for_status()
-        with target.open("wb") as handle:
+        try:
+            response.raise_for_status()
+        except HTTPError as exc:
+            if exc.response is not None and exc.response.status_code == 404:
+                return False
+            raise
+        total = int(response.headers.get("Content-Length", 0))
+        with (
+            target.open("wb") as handle,
+            tqdm(
+                total=total or None,
+                desc=title,
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+                leave=False,
+            ) as file_bar,
+        ):
             for chunk in response.iter_content(chunk_size=1024 * 1024):
                 if chunk:
                     handle.write(chunk)
+                    if total:
+                        file_bar.update(len(chunk))
+        return True
 
     @staticmethod
-    def _safe_filename(title: str, index: int, key: str | None = None) -> str:
+    def _safe_filename(title: str, index: int, year: int | None = None) -> str:
         cleaned = "".join(ch for ch in title if ch.isalnum() or ch in (" ", "-", "_")).strip()
         cleaned = "_".join(cleaned.split())
         if not cleaned:
             cleaned = "poster"
-        if key:
-            return f"{cleaned}_{key}"
+        if year:
+            cleaned = f"{cleaned}_{year}"
         return f"{cleaned}_{index}"
+
+    def _collect_assets(self, library: str, limit: int | None) -> Sequence[PosterAsset]:
+        assets = list(self.iter_posters(library))
+        if limit is not None:
+            return assets[:limit]
+        return assets
