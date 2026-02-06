@@ -1,0 +1,40 @@
+[project]
+name = "plex-metadata"
+version = "0.1.0"
+description = "CLI tools for Plex metadata management"
+requires-python = ">=3.12"
+dependencies = [
+  "typer>=0.12.0",
+  "pydantic>=2.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pre-commit>=3.7.0",
+  "pyrefly==0.30.0",
+  "ruff>=0.14.14",
+]
+
+[project.scripts]
+plex-metadata = "plex_metadata.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/plex_metadata", "src/posters"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.pyrefly]
+project-includes = [
+  "src/**/*.py",
+  "src/tests/**/*.py",
+]

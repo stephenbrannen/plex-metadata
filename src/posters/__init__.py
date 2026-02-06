@@ -1,0 +1,1 @@
+"""Posters command package."""
