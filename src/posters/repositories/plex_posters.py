@@ -22,6 +22,9 @@ class HttpResponse(Protocol):
     @property
     def headers(self) -> Mapping[str, str]: ...
 
+    @property
+    def status_code(self) -> int: ...
+
 
 class HttpSession(Protocol):
     def get(self, url: str, **kwargs) -> HttpResponse:  # type: ignore[override]
@@ -32,7 +35,10 @@ class HttpSession(Protocol):
 class PosterAsset:
     title: str
     url: str
-    year: int | None = None
+    asset_name: str
+    kind: str
+    season: int | None = None
+    episode: int | None = None
 
 
 @dataclass(frozen=True)
@@ -55,10 +61,61 @@ class PlexPostersRepository:
     def iter_posters(self, library: str) -> Iterable[PosterAsset]:
         """Yield poster assets for items in a library section."""
         section = self.plex.library.section(library)
+        if section.type == "movie":
+            for item in section.all():
+                asset_name = self._asset_name_from_item(item)
+                if item.posterUrl and asset_name:
+                    yield PosterAsset(
+                        title=item.title,
+                        url=item.posterUrl,
+                        asset_name=asset_name,
+                        kind="movie",
+                    )
+            return
+        if section.type == "show":
+            for show in section.all():
+                asset_name = self._asset_name_from_item(show)
+                if not asset_name:
+                    continue
+                if show.posterUrl:
+                    yield PosterAsset(
+                        title=show.title,
+                        url=show.posterUrl,
+                        asset_name=asset_name,
+                        kind="show",
+                    )
+                for season in show.seasons():
+                    if season.posterUrl:
+                        yield PosterAsset(
+                            title=f"{show.title} Season {season.seasonNumber}",
+                            url=season.posterUrl,
+                            asset_name=asset_name,
+                            kind="season",
+                            season=season.seasonNumber,
+                        )
+                    for episode in season.episodes():
+                        if episode.thumbUrl:
+                            yield PosterAsset(
+                                title=(
+                                    f"{show.title} "
+                                    f"S{season.seasonNumber:02d}E{episode.episodeNumber:02d}"
+                                ),
+                                url=episode.thumbUrl,
+                                asset_name=asset_name,
+                                kind="episode",
+                                season=season.seasonNumber,
+                                episode=episode.episodeNumber,
+                            )
+            return
         for item in section.all():
-            if item.posterUrl:
-                year = getattr(item, "year", None)
-                yield PosterAsset(title=item.title, url=item.posterUrl, year=year)
+            asset_name = self._asset_name_from_item(item)
+            if item.posterUrl and asset_name:
+                yield PosterAsset(
+                    title=item.title,
+                    url=item.posterUrl,
+                    asset_name=asset_name,
+                    kind=section.type,
+                )
 
     def iter_targets(self, job: PosterJob, limit: int | None = None) -> Iterable[Path]:
         """Yield target file paths for poster assets."""
@@ -67,8 +124,10 @@ class PlexPostersRepository:
 
         assets = self._collect_assets(job.library, limit)
         for index, asset in enumerate(assets):
-            filename = self._safe_filename(asset.title, index, asset.year)
-            yield output_dir / f"{filename}.jpg"
+            asset_dir = output_dir / asset.asset_name
+            asset_dir.mkdir(parents=True, exist_ok=True)
+            filename = self._asset_filename(asset, index)
+            yield asset_dir / f"{filename}.jpg"
 
     def download_posters(self, job: PosterJob, limit: int | None = None) -> DownloadReport:
         """Download posters to the job output directory. Returns report."""
@@ -81,8 +140,10 @@ class PlexPostersRepository:
         assets = self._collect_assets(job.library, limit)
         with tqdm(total=len(assets), desc="Posters", unit="poster") as poster_bar:
             for index, asset in enumerate(assets):
-                filename = self._safe_filename(asset.title, index, asset.year)
-                target = output_dir / f"{filename}.jpg"
+                asset_dir = output_dir / asset.asset_name
+                asset_dir.mkdir(parents=True, exist_ok=True)
+                filename = self._asset_filename(asset, index)
+                target = asset_dir / f"{filename}.jpg"
                 if self._download(asset.url, target, asset.title):
                     downloaded += 1
                 else:
@@ -122,14 +183,30 @@ class PlexPostersRepository:
         return True
 
     @staticmethod
-    def _safe_filename(title: str, index: int, year: int | None = None) -> str:
-        cleaned = "".join(ch for ch in title if ch.isalnum() or ch in (" ", "-", "_")).strip()
-        cleaned = "_".join(cleaned.split())
-        if not cleaned:
-            cleaned = "poster"
-        if year:
-            cleaned = f"{cleaned}_{year}"
-        return f"{cleaned}_{index}"
+    def _asset_filename(asset: PosterAsset, index: int) -> str:
+        if asset.kind in ("movie", "show"):
+            return "poster"
+        if asset.kind == "season" and asset.season is not None:
+            return f"Season{asset.season:02d}"
+        if asset.kind == "episode" and asset.season is not None and asset.episode is not None:
+            return f"S{asset.season:02d}E{asset.episode:02d}"
+        return f"poster_{index}"
+
+    @staticmethod
+    def _asset_name_from_item(item) -> str | None:
+        locations = getattr(item, "locations", None)
+        if locations:
+            return Path(locations[0]).name
+        media = getattr(item, "media", None)
+        if media:
+            parts = getattr(media[0], "parts", None)
+            if parts:
+                return Path(parts[0].file).parent.name
+        show = getattr(item, "show", None)
+        if show:
+            show_obj = show()
+            return PlexPostersRepository._asset_name_from_item(show_obj)
+        return None
 
     def _collect_assets(self, library: str, limit: int | None) -> Sequence[PosterAsset]:
         assets = list(self.iter_posters(library))

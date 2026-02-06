@@ -25,7 +25,8 @@ class CliCommandMixin(ABC):
     def command_name(self) -> str:  # pragma: no cover - abstract
         raise NotImplementedError
 
-    def runner(self) -> CliRunner:
+    @staticmethod
+    def runner() -> CliRunner:
         return CliRunner()
 
     def invoke(
@@ -58,9 +59,16 @@ class CliCommandMixin(ABC):
         return patch(f"{self.command_name}.cli.PlexServer")
 
     @contextmanager
-    def setup_mocks(self, repository_targets: Iterable[Path] | None = None) -> Iterator[MagicMock]:
+    def setup_mocks(
+        self,
+        repository_targets: Iterable[Path] | None = None,
+        sections: Iterable[str] | None = None,
+    ) -> Iterator[MagicMock]:
         with self.patch_server() as plex_server, self.patch_repository() as repository_cls:
-            plex_server.return_value = MagicMock()
+            plex = MagicMock()
+            if sections is not None:
+                plex.library.sections.return_value = [MagicMock(title=s) for s in sections]
+            plex_server.return_value = plex
             repository = repository_cls.return_value
             if repository_targets is not None:
                 repository.iter_targets.return_value = list(repository_targets)

@@ -34,6 +34,7 @@ export PLEX_LIBRARY="Movies"
 ```
 
 You can also pass these as CLI options (`--base-url`, `--token`, `--library`).
+If you prefer not to set `PLEX_LIBRARY`, use `--all-libraries`.
 
 ## Install
 
@@ -48,7 +49,7 @@ pip install -e ".[dev]"
 Download posters:
 
 ```bash
-plex-metadata posters download --output-dir "plex-posters"
+plex-metadata posters download --library "Movies" --output-dir "plex-posters"
 ```
 
 Limit downloads:
@@ -60,15 +61,43 @@ plex-metadata posters download --limit 10
 Dry run (no files written):
 
 ```bash
-plex-metadata posters download --dry-run
+plex-metadata posters download --library "Movies" --dry-run
 ```
 
-## Output behavior
+All libraries:
 
-- Files are saved into `--output-dir` (default: `posters`).
-- Filenames include the title and year (if available) plus an index to prevent collisions:
-  - `Title_1999_0.jpg`
-  - `Title_2004_1.jpg`
+```bash
+plex-metadata posters download --all-libraries --output-dir "plex-posters"
+```
+
+## Output layout (Kometa asset folders)
+
+The tool writes Kometa-compatible asset folders based on the media **folder name** in Plex, following the Kometa asset naming guide (`asset_folders: true`):
+
+```
+https://kometa.wiki/en/latest/kometa/guides/assets/?h=assets#asset-naming
+```
+
+### Movies
+
+```
+<output_dir>/<ASSET_NAME>/poster.jpg
+```
+
+`ASSET_NAME` is the movie folder name in Plex (e.g., `Movie Name (1999)`).
+
+### TV Shows
+
+```
+<output_dir>/<ASSET_NAME>/poster.jpg
+<output_dir>/<ASSET_NAME>/Season01.jpg
+<output_dir>/<ASSET_NAME>/S01E01.jpg
+```
+
+Where:
+- `ASSET_NAME` is the show folder name in Plex.
+- Seasons use zero-padded numbers (`Season00` for specials).
+- Episodes use zero-padded `S##E##`.
 
 ## Missing posters report
 
