@@ -1,19 +1,3 @@
-"""
-  1. Project language level
-      - File → Project Structure…
-      - Set Project SDK to the venv interpreter
-      - Set Project language level to 3.14 (or at least 3.10)
-  2. Inspection profile language level
-      - Settings → Editor → Inspections
-      - At the top, ensure the profile is tied to the project SDK (not “Python 2.7”)
-      - If there’s a Python Language Level selector, set it to your SDK
-  3. Invalidate caches
-      - File → Invalidate Caches / Restart…
-
-  If the warning persists, tell me the exact inspection name and the file it flags, and I’ll pinpoint the
-  setting to adjust.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Buffer
@@ -30,8 +14,8 @@ from posters.repositories.plex_posters import PlexPostersRepository
 @pytest.fixture()
 def sample_items() -> tuple[MagicMock, MagicMock]:
     return (
-        MagicMock(title="Movie One", posterUrl="http://example.com/1.jpg"),
-        MagicMock(title="Movie Two", posterUrl="http://example.com/2.jpg"),
+        MagicMock(title="Movie One", posterUrl="http://example.com/1.jpg", ratingKey="1"),
+        MagicMock(title="Movie Two", posterUrl="http://example.com/2.jpg", ratingKey="2"),
     )
 
 
@@ -54,13 +38,18 @@ def test_safe_filename_falls_back_on_empty_title() -> None:
     assert name == "poster_3"
 
 
+def test_safe_filename_prefers_key() -> None:
+    name = PlexPostersRepository._safe_filename("Movie One", 3, "123")
+    assert name == "Movie_One_123"
+
+
 def test_iter_posters_yields_only_items_with_urls(
-    sample_items: tuple[MagicMock, MagicMock]
+    sample_items: tuple[MagicMock, MagicMock],
 ) -> None:
     first_item, _ = sample_items
     items = [
         first_item,
-        MagicMock(title="Movie Two", posterUrl=None),
+        MagicMock(title="Movie Two", posterUrl=None, ratingKey="2"),
     ]
     plex = MagicMock()
     section = MagicMock()
@@ -76,9 +65,7 @@ def test_iter_posters_yields_only_items_with_urls(
     assert poster.url == "http://example.com/1.jpg"
 
 
-def test_download_posters_writes_files(
-    tmp_path: Path, repository: PlexPostersRepository
-) -> None:
+def test_download_posters_writes_files(tmp_path: Path, repository: PlexPostersRepository) -> None:
     def fake_download(_self: PlexPostersRepository, _url: str, target: Path) -> None:
         target.write_bytes(cast(Buffer, b"fake"))
 
@@ -88,13 +75,11 @@ def test_download_posters_writes_files(
         count = repository.download_posters(job=job)
 
     assert count == 2
-    assert (tmp_path / "Movie_One.jpg").exists()
-    assert (tmp_path / "Movie_Two.jpg").exists()
+    assert (tmp_path / "Movie_One_1.jpg").exists()
+    assert (tmp_path / "Movie_Two_2.jpg").exists()
 
 
-def test_download_posters_respects_limit(
-    tmp_path: Path, repository: PlexPostersRepository
-) -> None:
+def test_download_posters_respects_limit(tmp_path: Path, repository: PlexPostersRepository) -> None:
     def fake_download(_self: PlexPostersRepository, _url: str, target: Path) -> None:
         target.write_bytes(cast(Buffer, b"fake"))
 
@@ -104,5 +89,5 @@ def test_download_posters_respects_limit(
         count = repository.download_posters(job=job, limit=1)
 
     assert count == 1
-    assert (tmp_path / "Movie_One.jpg").exists()
-    assert not (tmp_path / "Movie_Two.jpg").exists()
+    assert (tmp_path / "Movie_One_1.jpg").exists()
+    assert not (tmp_path / "Movie_Two_2.jpg").exists()

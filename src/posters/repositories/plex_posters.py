@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Protocol
+from typing import Protocol
 
 from plexapi.server import PlexServer
 
@@ -12,11 +13,9 @@ from posters.domain import PosterJob
 
 
 class HttpResponse(Protocol):
-    def raise_for_status(self) -> None:
-        ...
+    def raise_for_status(self) -> None: ...
 
-    def iter_content(self, chunk_size: int) -> Iterable[bytes]:
-        ...
+    def iter_content(self, chunk_size: int) -> Iterable[bytes]: ...
 
 
 class HttpSession(Protocol):
@@ -28,6 +27,7 @@ class HttpSession(Protocol):
 class PosterAsset:
     title: str
     url: str
+    key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -45,7 +45,8 @@ class PlexPostersRepository:
         section = self.plex.library.section(library)
         for item in section.all():
             if item.posterUrl:
-                yield PosterAsset(title=item.title, url=item.posterUrl)
+                key = str(getattr(item, "ratingKey", "")) or None
+                yield PosterAsset(title=item.title, url=item.posterUrl, key=key)
 
     def download_posters(self, job: PosterJob, limit: int | None = None) -> int:
         """Download posters to the job output directory. Returns count."""
@@ -56,7 +57,7 @@ class PlexPostersRepository:
         for asset in self.iter_posters(job.library):
             if limit is not None and downloaded >= limit:
                 break
-            filename = self._safe_filename(asset.title, downloaded)
+            filename = self._safe_filename(asset.title, downloaded, asset.key)
             target = output_dir / f"{filename}.jpg"
             self._download(asset.url, target)
             downloaded += 1
@@ -74,7 +75,11 @@ class PlexPostersRepository:
                     handle.write(chunk)
 
     @staticmethod
-    def _safe_filename(title: str, index: int) -> str:
+    def _safe_filename(title: str, index: int, key: str | None = None) -> str:
         cleaned = "".join(ch for ch in title if ch.isalnum() or ch in (" ", "-", "_")).strip()
         cleaned = "_".join(cleaned.split())
-        return cleaned or f"poster_{index}"
+        if not cleaned:
+            cleaned = "poster"
+        if key:
+            return f"{cleaned}_{key}"
+        return f"{cleaned}_{index}"
