@@ -70,6 +70,12 @@ All libraries:
 plex-metadata posters download --all-libraries --output-dir "plex-posters"
 ```
 
+List libraries:
+
+```bash
+plex-metadata libraries list
+```
+
 ## Output layout (Kometa asset folders)
 
 The tool writes Kometa-compatible asset folders based on the media **folder name** in Plex. It strips file extensions and extra metadata, and prefers `Title (Year)` when present. Output follows the Kometa asset naming guide (`asset_folders: true`):
