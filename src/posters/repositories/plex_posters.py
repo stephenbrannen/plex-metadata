@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -196,17 +197,39 @@ class PlexPostersRepository:
     def _asset_name_from_item(item) -> str | None:
         locations = getattr(item, "locations", None)
         if locations:
-            return Path(locations[0]).name
+            return PlexPostersRepository._normalize_asset_name(Path(locations[0]).name)
         media = getattr(item, "media", None)
         if media:
             parts = getattr(media[0], "parts", None)
             if parts:
-                return Path(parts[0].file).parent.name
+                raw = Path(parts[0].file).parent.name
+                # If the media file is stored directly under a file-like folder, use the file name.
+                if Path(raw).suffix:
+                    raw = Path(parts[0].file).stem
+                return PlexPostersRepository._normalize_asset_name(raw)
         show = getattr(item, "show", None)
         if show:
             show_obj = show()
             return PlexPostersRepository._asset_name_from_item(show_obj)
         return None
+
+    @staticmethod
+    def _normalize_asset_name(raw: str) -> str:
+        raw = raw.strip()
+        # Drop file extension if present.
+        if Path(raw).suffix:
+            raw = Path(raw).stem
+        # Prefer "Title (YYYY)" if present.
+        match = re.match(r"^(?P<title>.+?)\\s*\\((?P<year>\\d{4})\\)", raw)
+        if match:
+            title = match.group("title").strip()
+            year = match.group("year")
+            return f"{title} ({year})"
+        # Otherwise strip common trailing tags.
+        for token in (" {", " ["):
+            if token in raw:
+                raw = raw.split(token, 1)[0].strip()
+        return raw
 
     def _collect_assets(self, library: str, limit: int | None) -> Sequence[PosterAsset]:
         assets = list(self.iter_posters(library))

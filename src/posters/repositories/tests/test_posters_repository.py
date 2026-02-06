@@ -50,6 +50,11 @@ def test_asset_filename_for_movie() -> None:
     assert name == "poster"
 
 
+def test_asset_name_strips_extension() -> None:
+    asset_name = PlexPostersRepository._normalize_asset_name("Movie One (1999).mkv")
+    assert asset_name == "Movie One (1999)"
+
+
 def test_iter_posters_yields_only_items_with_urls(
     sample_items: tuple[MagicMock, MagicMock],
 ) -> None:
