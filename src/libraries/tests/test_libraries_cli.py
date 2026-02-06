@@ -24,8 +24,8 @@ class TestLibrariesCli(CliCommandMixin):
             result = self.invoke(self.default_args())
 
         assert result.exit_code == 0
-        assert "Movies (movie)" in result.output
-        assert "TV Shows (show)" in result.output
+        assert "Movies" in result.output
+        assert "TV Shows" in result.output
 
     def default_args(self) -> list[str]:
         return [

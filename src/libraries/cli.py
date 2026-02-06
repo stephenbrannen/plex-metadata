@@ -20,4 +20,4 @@ def list(
     repository = PlexLibrariesRepository(plex=plex)
 
     for library in repository.list_libraries():
-        typer.echo(f"{library.title} ({library.type})")
+        typer.echo(library.title)
