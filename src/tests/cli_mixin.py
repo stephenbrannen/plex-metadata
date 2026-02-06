@@ -35,10 +35,7 @@ class CliCommandMixin(ABC):
     ):
         return self.runner().invoke(self.app, args)
 
-    def default_args(
-        self,
-        tmp_path: Path,
-    ) -> list[str]:
+    def default_args(self) -> list[str]:
         return [
             self.command_name,
             "download",
@@ -49,11 +46,11 @@ class CliCommandMixin(ABC):
             "--library",
             "Movies",
             "--output-dir",
-            str(tmp_path),
+            "posters",
         ]
 
-    def patch_repository(self):
-        return patch(f"{self.command_name}.cli.PlexPostersRepository")
+    def patch_repository(self, repository_attr: str):
+        return patch(f"{self.command_name}.cli.{repository_attr}")
 
     def patch_server(self):
         return patch(f"{self.command_name}.cli.PlexServer")
@@ -63,8 +60,12 @@ class CliCommandMixin(ABC):
         self,
         repository_targets: Iterable[Path] | None = None,
         sections: Iterable[str] | None = None,
+        repository_attr: str = "PlexPostersRepository",
     ) -> Iterator[MagicMock]:
-        with self.patch_server() as plex_server, self.patch_repository() as repository_cls:
+        with (
+            self.patch_server() as plex_server,
+            self.patch_repository(repository_attr) as repository_cls,
+        ):
             plex = MagicMock()
             if sections is not None:
                 plex.library.sections.return_value = [MagicMock(title=s) for s in sections]

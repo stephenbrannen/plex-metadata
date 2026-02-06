@@ -24,7 +24,7 @@ class TestPostersCli(CliCommandMixin):
             repository.download_posters.return_value = MagicMock(
                 downloaded=3, skipped_404=0, missing=[]
             )
-            result = self.invoke(self.default_args(tmp_path))
+            result = self.invoke(self.default_args() + ["--output-dir", str(tmp_path)])
 
         assert result.exit_code == 0
         assert "Downloaded 3 posters to" in result.output
@@ -37,7 +37,7 @@ class TestPostersCli(CliCommandMixin):
                 skipped_404=1,
                 missing=[MagicMock(title="Missing Movie", url="http://example.com/missing.jpg")],
             )
-            result = self.invoke(self.default_args(tmp_path))
+            result = self.invoke(self.default_args() + ["--output-dir", str(tmp_path)])
 
         assert result.exit_code == 0
         assert "Skipped 1 posters (404)" in result.output
@@ -48,7 +48,7 @@ class TestPostersCli(CliCommandMixin):
         targets = (tmp_path / "Movie_One_1.jpg", tmp_path / "Movie_Two_2.jpg")
 
         with self.setup_mocks(repository_targets=targets) as repository:
-            result = self.invoke(self.default_args(tmp_path) + ["--dry-run"])
+            result = self.invoke(self.default_args() + ["--output-dir", str(tmp_path), "--dry-run"])
 
         assert result.exit_code == 0
         assert "Dry run: 2 posters would be downloaded." in result.output
@@ -60,7 +60,7 @@ class TestPostersCli(CliCommandMixin):
     def test_download_request_error(self, tmp_path: Path) -> None:
         with self.setup_mocks() as repository:
             repository.download_posters.side_effect = RuntimeError("boom")
-            result = self.invoke(self.default_args(tmp_path))
+            result = self.invoke(self.default_args() + ["--output-dir", str(tmp_path)])
 
         assert result.exit_code == 1
         assert "Configuration error:" in result.output
@@ -68,7 +68,7 @@ class TestPostersCli(CliCommandMixin):
     def test_download_network_error(self, tmp_path: Path) -> None:
         with self.setup_mocks() as repository:
             repository.download_posters.side_effect = RequestException("network")
-            result = self.invoke(self.default_args(tmp_path))
+            result = self.invoke(self.default_args() + ["--output-dir", str(tmp_path)])
 
         assert result.exit_code == 1
         assert "Request failed:" in result.output
