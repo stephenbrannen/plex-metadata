@@ -12,6 +12,7 @@ Project guidelines for Codex and other agents.
 - `src/plex_metadata/`: main CLI package (Typer app, command wiring).
 - `src/<command>/`: command package (e.g., `src/posters/`).
 - `src/<command>/tests/`: tests for that command package.
+- `src/<command>/repositories/tests/`: tests for repositories in that command.
 - `src/tests/`: tests for root-level/shared code.
 
 ## Domain and schemas
@@ -61,5 +62,6 @@ Project guidelines for Codex and other agents.
 
 ## Common commands
 - Install deps: `uv sync --extra dev`
-- Run tests: `uv run pytest`
-- Run hooks: `uv run pre-commit run --all-files`
+- Activate venv (needed for pre-commit hooks): `source .venv/bin/activate`
+- Run tests: `pytest`
+- Run hooks: `pre-commit run --all-files`
