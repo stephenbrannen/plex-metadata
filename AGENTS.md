@@ -66,3 +66,6 @@ Project guidelines for Codex and other agents.
 - Activate venv (needed for pre-commit hooks): `source .venv/bin/activate`
 - Run tests: `pytest`
 - Run hooks: `pre-commit run --all-files`
+
+## Formatting
+- All `*.yaml`/`*.yml` files must start with a document separator (`---`).
