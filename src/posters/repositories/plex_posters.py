@@ -48,16 +48,27 @@ class PlexPostersRepository:
                 key = str(getattr(item, "ratingKey", "")) or None
                 yield PosterAsset(title=item.title, url=item.posterUrl, key=key)
 
+    def iter_targets(self, job: PosterJob, limit: int | None = None) -> Iterable[Path]:
+        """Yield target file paths for poster assets."""
+        output_dir = Path(job.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        for index, asset in enumerate(self.iter_posters(job.library)):
+            if limit is not None and index >= limit:
+                break
+            filename = self._safe_filename(asset.title, index, asset.key)
+            yield output_dir / f"{filename}.jpg"
+
     def download_posters(self, job: PosterJob, limit: int | None = None) -> int:
         """Download posters to the job output directory. Returns count."""
         output_dir = Path(job.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         downloaded = 0
-        for asset in self.iter_posters(job.library):
-            if limit is not None and downloaded >= limit:
+        for index, asset in enumerate(self.iter_posters(job.library)):
+            if limit is not None and index >= limit:
                 break
-            filename = self._safe_filename(asset.title, downloaded, asset.key)
+            filename = self._safe_filename(asset.title, index, asset.key)
             target = output_dir / f"{filename}.jpg"
             self._download(asset.url, target)
             downloaded += 1

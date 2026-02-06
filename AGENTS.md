@@ -52,6 +52,8 @@ Project guidelines for Codex and other agents.
 - Prefer function-based pytest tests.
 - Use `unittest.mock` for mocks (avoid custom fake classes unless needed).
 - For patched methods on frozen dataclasses, use `patch.object` instead of assignment.
+- For CLI commands, use Typer's `CliRunner` and mock external dependencies.
+- Use `src/tests/cli_mixin.py` and inherit from `CliCommandMixin` for new command CLI tests.
 
 ## Git and signing
 - Git commit signing uses 1Password SSH signing.

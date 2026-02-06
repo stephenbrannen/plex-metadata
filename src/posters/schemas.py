@@ -11,3 +11,4 @@ class PostersDownloadRequest(BaseModel):
     library: str = Field(..., min_length=1)
     output_dir: str = Field(default="posters", min_length=1)
     limit: Annotated[int | None, Field(ge=1)] = None
+    dry_run: bool = False

@@ -91,3 +91,11 @@ def test_download_posters_respects_limit(tmp_path: Path, repository: PlexPosters
     assert count == 1
     assert (tmp_path / "Movie_One_1.jpg").exists()
     assert not (tmp_path / "Movie_Two_2.jpg").exists()
+
+
+def test_iter_targets_respects_limit(tmp_path: Path, repository: PlexPostersRepository) -> None:
+    job = PosterJob(output_dir=str(tmp_path), library="Movies", base_url="http://x")
+    targets = list(repository.iter_targets(job=job, limit=1))
+
+    assert len(targets) == 1
+    assert targets[0].name == "Movie_One_1.jpg"
