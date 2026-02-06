@@ -86,7 +86,7 @@ class PlexPostersRepository:
                         kind="show",
                     )
                 for season in show.seasons():
-                    if season.posterUrl:
+                    if season.posterUrl and season.seasonNumber is not None:
                         yield PosterAsset(
                             title=f"{show.title} Season {season.seasonNumber}",
                             url=season.posterUrl,
@@ -95,7 +95,11 @@ class PlexPostersRepository:
                             season=season.seasonNumber,
                         )
                     for episode in season.episodes():
-                        if episode.thumbUrl:
+                        if (
+                            episode.thumbUrl
+                            and season.seasonNumber is not None
+                            and episode.episodeNumber is not None
+                        ):
                             yield PosterAsset(
                                 title=(
                                     f"{show.title} "

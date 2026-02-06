@@ -148,3 +148,32 @@ def test_tv_assets_use_kometa_naming(tmp_path: Path) -> None:
     assert "Show Name/poster.jpg" in names
     assert "Show Name/Season01.jpg" in names
     assert "Show Name/S01E02.jpg" in names
+
+
+def test_tv_skips_missing_episode_numbers(tmp_path: Path) -> None:
+    episode = MagicMock(episodeNumber=None, thumbUrl="http://example.com/e.jpg")
+    season = MagicMock(
+        seasonNumber=1,
+        posterUrl="http://example.com/s.jpg",
+        episodes=MagicMock(return_value=[episode]),
+    )
+    show = MagicMock(
+        title="Show Name",
+        posterUrl="http://example.com/show.jpg",
+        seasons=MagicMock(return_value=[season]),
+        locations=["/media/TV/Show Name"],
+    )
+    plex = MagicMock()
+    section = MagicMock()
+    section.type = "show"
+    section.all.return_value = [show]
+    plex.library.section.return_value = section
+    repo = PlexPostersRepository(plex=plex)
+
+    job = PosterJob(output_dir=str(tmp_path), library="TV", base_url="http://x")
+    targets = list(repo.iter_targets(job=job))
+
+    names = {t.relative_to(tmp_path).as_posix() for t in targets}
+    assert "Show Name/poster.jpg" in names
+    assert "Show Name/Season01.jpg" in names
+    assert "Show Name/S01E00.jpg" not in names
