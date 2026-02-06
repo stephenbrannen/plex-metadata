@@ -5,7 +5,7 @@ CLI tools for Plex metadata management. Current focus: downloading poster artwor
 ## Requirements
 
 - Python 3.12+ (project uses a local virtualenv)
-- `uv` for dependency management (install docs: [UV installation guide](https://docs.astral.sh/uv/getting-started/installation/))
+- `uv` for dependency management ([UV installation guide](https://docs.astral.sh/uv/getting-started/installation/))
 - A Plex Media Server you can access
 
 
