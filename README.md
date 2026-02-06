@@ -8,6 +8,12 @@ CLI tools for Plex metadata management. Current focus: downloading poster artwor
 - `uv` for dependency management
 - A Plex Media Server you can access
 
+Install `uv`:
+
+```
+https://docs.astral.sh/uv/getting-started/installation/
+```
+
 ## Setup
 
 ```bash
