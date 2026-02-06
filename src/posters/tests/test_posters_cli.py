@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from requests import RequestException
 from typer import Typer
 
 from plex_metadata.cli import app
-from requests import RequestException
-
 from tests.cli_mixin import CliCommandMixin
 
 
