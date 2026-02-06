@@ -39,6 +39,7 @@ def download(
         if request.dry_run:
             targets = []
             for library_name in _resolve_libraries(plex, request.library, request.all_libraries):
+                typer.echo(f"Library: {library_name}")
                 job = PosterJob(
                     output_dir=request.output_dir,
                     library=library_name,
@@ -53,6 +54,7 @@ def download(
             return
         report = DownloadReport(downloaded=0, skipped_404=0, missing=[])
         for library_name in _resolve_libraries(plex, request.library, request.all_libraries):
+            typer.echo(f"Library: {library_name}")
             job = PosterJob(
                 output_dir=request.output_dir,
                 library=library_name,
