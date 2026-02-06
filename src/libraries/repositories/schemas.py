@@ -1,4 +1,4 @@
-"""Libraries request/input schemas."""
+"""Request/input schemas for libraries repositories."""
 
 from pydantic import BaseModel, Field
 

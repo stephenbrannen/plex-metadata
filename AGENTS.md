@@ -17,9 +17,10 @@ Project guidelines for Codex and other agents.
 
 ## Domain and schemas
 - Each command package has:
-  - `domain.py` for domain objects.
-  - `schemas.py` for input/request schemas (Pydantic).
-- Root-level equivalents:
+  - `domain.py` for command-specific domain objects.
+  - `schemas.py` for CLI/input schemas owned by that command.
+- Repository-specific domain/schema objects must live under the repository package that uses them (e.g., `src/<command>/repositories/schemas.py`). Keep types close to their owners rather than at the command root.
+- Root-level equivalents exist only for code shared across commands:
   - `src/domain.py`
   - `src/schemas.py`
 

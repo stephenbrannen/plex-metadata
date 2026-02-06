@@ -4,7 +4,7 @@ from requests import RequestException
 
 from posters.domain import PosterJob
 from posters.repositories.plex_posters import DownloadReport, PlexPostersRepository
-from posters.schemas import PostersDownloadRequest
+from posters.repositories.schemas import PostersDownloadRequest
 
 app = typer.Typer(help="Download poster artwork")
 

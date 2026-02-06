@@ -4,7 +4,7 @@ import typer
 from plexapi.server import PlexServer
 
 from libraries.repositories.plex_libraries import PlexLibrariesRepository
-from libraries.schemas import LibrariesListRequest
+from libraries.repositories.schemas import LibrariesListRequest
 
 app = typer.Typer(help="List Plex libraries")
 

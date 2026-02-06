@@ -1,4 +1,4 @@
-"""Posters request/input schemas."""
+"""Request/input schemas for posters repositories."""
 
 from typing import Annotated
 
